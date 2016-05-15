@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 
+import validators
 import sys
 import httplib2
 import datetime
@@ -113,11 +114,17 @@ def intro(url, domain):
         print(timeStamp() + "- " + IP)
     print()
 
+def validateURL(url):
+    if not validators.url(url):
+        print(timeStamp() + "* Invalid URL provided")
+        sys.exit(1)
+
 def main():
     if len(sys.argv) != 2:
         print(sys.argv[0] + " http(s)://<target>")
         sys.exit(1)
     url = sys.argv[1]
+    validateURL(url)
     domain = getDomain(url)
     intro(url, domain)
     performWhoIs(getIPs(domain)[2][0])
