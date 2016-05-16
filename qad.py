@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 
+import requests
 import validators
 import sys
 import httplib2
@@ -7,35 +8,44 @@ import datetime
 import socket
 from urllib.parse import urlsplit
 from ipwhois import IPWhois
+from pprint import pprint
 
 http_interface = httplib2.Http()
+http_interface.follow_redirects = False
 
 def timeStamp():
     now = datetime.datetime.now()
     return now.strftime("[%Y-%m-%d %H:%M:%S] ")
 
-def checkProtocol(url):
-    secureURL = 0
-    # Determine target URL type
-    if url.lower().find("https:",0) == 0:
-        secureURL = 1
-        print(timeStamp() + "* HTTPS URL provided, checking for HTTP on TCP port 80")
-    else:
-        print(timeStamp() + "* HTTP URL provided, checking for HTTPS on TCP port 443")
-    # If no SSL, try SSL connection on TCP port 443
-    # If SSL, try plaintext port 80 connection and check for HSTS/30x
-
-def checkRobots(url):
-    url_robots = url + "/robots.txt"
+def checkHost(url):
     try:
-        print(timeStamp() + "* Checking /robots.txt ... ",end="")
-        response, content = http_interface.request(url_robots, method="GET")
-        print(response.status)
+        response, content = http_interface.request(url, method="GET")
 
-        if response.status == 200:
-            print(timeStamp() + "!!! robots.txt found - " + url + "/robots.txt")
+        if response.status == 301 or response.status == 302:
+            print(timeStamp() + "* Redirected to " + response['location'] + " ... Exiting")
+            sys.exit(1)
+
     except httplib2.ServerNotFoundError as e:
         print (e.message) 
+
+def checkLocation(url, path):
+    urlCheck = url + path
+    try:
+        response, content = http_interface.request(urlCheck, method="GET")
+
+        if response.status == 200:
+            print(timeStamp() + "!!! " + path + " found - " + urlCheck)
+    except httplib2.ServerNotFoundError as e:
+        print (e.message) 
+
+def checkCookies(url):
+    r = requests.get(url)
+    for cookie in r.cookies:
+        if url.lower().find("https:",0) == 0:
+            if cookie.secure == False:
+                print(timeStamp() + "!!! " + cookie.name + " set without 'Secure' flag")
+        if not cookie.has_nonstandard_attr('httponly') and not cookie.has_nonstandard_attr('HttpOnly'):
+            print(timeStamp() + "!!! " + cookie.name + " set without 'HttpOnly' flag")
 
 def checkHeaders(url):
     secureURL = 0
@@ -47,19 +57,25 @@ def checkHeaders(url):
 
     try:
         response, content = http_interface.request(url, method="GET")
+        responseLower = map(str.lower, response)
 
-        #print(timeStamp() + "Header list:")
-        #for header in response:
-        #    print(timeStamp() + "- " + header)
+        if 'server' in responseLower:
+            print(timeStamp() + "!!! Server header - " + response['server'])
 
-        if 'x-frame-options' not in map(str.lower, response):
+        if 'x-powered-by' in responseLower:
+            print(timeStamp() + "!!! X-Powered-By header - " + response['x-powered-by'])
+
+        if 'x-frame-options' not in responseLower:
             print(timeStamp() + "!!! X-Frame-Options header missing")
 
-        if 'content-security-policy' not in map(str.lower, response):
+        if 'content-security-policy' not in responseLower:
             print(timeStamp() + "!!! Content-Security-Policy header missing")
 
-        if 'x-xss-protection' not in map(str.lower, response):
+        if 'x-xss-protection' not in responseLower:
             print(timeStamp() + "!!! X-XSS-Protection header missing")
+
+        if 'set-cookie' in responseLower:
+            checkCookies(url)
 
         # Check for HTTPS specific headers
         if secureURL == 1:
@@ -127,11 +143,25 @@ def main():
     validateURL(url)
     domain = getDomain(url)
     intro(url, domain)
+    checkHost(url)
     performWhoIs(getIPs(domain)[2][0])
     print()
     checkHeaders(url)
     print()
-    checkRobots(url)
+    print(timeStamp() + "* Checking paths")
+    checkLocation(url, "/robots.txt")
+    checkLocation(url, "/crossdomain.xml")
+    checkLocation(url, "/sitemap.xml")
+    checkLocation(url, "/admin/")
+    checkLocation(url, "/backup/")
+    checkLocation(url, "/upload/")
+    checkLocation(url, "/download/")
+    checkLocation(url, "/wp-admin/")
+    checkLocation(url, "/stats/")
+    checkLocation(url, "/awstats/")
+    checkLocation(url, "/phpbb3/")
+    checkLocation(url, "/forum/")
+    checkLocation(url, "/blog/")
     print()
     checkQuickXSS(url)
     print()
