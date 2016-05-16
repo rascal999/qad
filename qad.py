@@ -57,30 +57,31 @@ def checkHeaders(url):
 
     try:
         response, content = http_interface.request(url, method="GET")
-        responseLower = map(str.lower, response)
 
-        if 'server' in responseLower:
+        if 'server' in response:
             print(timeStamp() + "!!! Server header - " + response['server'])
 
-        if 'x-powered-by' in responseLower:
+        if 'x-powered-by' in response:
             print(timeStamp() + "!!! X-Powered-By header - " + response['x-powered-by'])
 
-        if 'x-frame-options' not in responseLower:
+        if 'x-frame-options' not in response:
             print(timeStamp() + "!!! X-Frame-Options header missing")
 
-        if 'content-security-policy' not in responseLower:
+        if 'content-security-policy' not in response:
             print(timeStamp() + "!!! Content-Security-Policy header missing")
 
-        if 'x-xss-protection' not in responseLower:
+        if 'x-xss-protection' not in response:
             print(timeStamp() + "!!! X-XSS-Protection header missing")
 
-        if 'set-cookie' in responseLower:
+        if 'set-cookie' in response:
             checkCookies(url)
 
         # Check for HTTPS specific headers
         if secureURL == 1:
             if 'strict-transport-security' not in map(str.lower, response):
                 print(timeStamp() + "!!! HSTS header missing")
+            if 'public-key-pins' not in response:
+                print(timeStamp() + "!!! Public-Key-Pins header missing")
 
     except httplib2.ServerNotFoundError as e:
         print (e.message)
@@ -169,6 +170,7 @@ def main():
 if __name__ == "__main__":
     main()
 
+# Header presence checked, what about header values?
 #checkRobots
 #checkHeaders
 # Missing headers
