@@ -2,7 +2,8 @@
 
 ## Output
 
-``./qad.py http://10fastfingers.com/login
+```
+./qad.py http://10fastfingers.com/login
 [2016-05-17 23:43:14] QAD v0.1
 [2016-05-17 23:43:14] Quick and dirty web app scanner
 [2016-05-17 23:43:14] By @rascal999 - https://github.com/rascal999/
@@ -34,4 +35,5 @@
 [2016-05-17 23:44:23] * Checking / for XSS (URL only)
 
 [2016-05-17 23:44:23] * Checking HTML form code
-[2016-05-17 23:44:23] !!! Possible login/registration form over HTTP connection at http://10fastfingers.com/login``
+[2016-05-17 23:44:23] !!! Possible login/registration form over HTTP connection at http://10fastfingers.com/login
+```
