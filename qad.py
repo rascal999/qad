@@ -21,12 +21,13 @@ def checkHost(url):
     try:
         response, content = http_interface.request(url, method="GET")
 
+        #if response.status == 301 or response.status == 302 or response.status == 303:
         if response.status == 301 or response.status == 302:
             print(timeStamp() + "* Redirected to " + response['location'] + " ... Exiting")
             sys.exit(1)
 
     except httplib2.ServerNotFoundError as e:
-        print (e.message) 
+        print (e.message)
 
 def checkLocation(url, path):
     urlCheck = url + path
@@ -53,6 +54,7 @@ def checkHeaders(url):
     if url.lower().find("https:",0) == 0:
         secureURL = 1
 
+    print()
     print(timeStamp() + "* Checking headers")
 
     try:
@@ -99,6 +101,7 @@ def checkQuickXSS(url):
     url_xss = url + "/%3c%3eqadqad"
 
     try:
+        print()
         print(timeStamp() + "* Checking / for XSS (URL only)")
         try:
             response, content = http_interface.request(url_xss, method="GET")
@@ -117,6 +120,7 @@ def getDomain(url):
     return domain
 
 def performWhoIs(IP):
+    print()
     print(timeStamp() + "* Performing WHOIS on " + IP)
     obj = IPWhois(IP)
     res = obj.lookup_whois()
@@ -134,12 +138,27 @@ def intro(url, domain):
     IPs = getIPs(domain)
     for IP in IPs[2]:
         print(timeStamp() + "- " + IP)
-    print()
 
 def validateURL(url):
     if not validators.url(url):
         print(timeStamp() + "* Invalid URL provided")
         sys.exit(1)
+
+def checkForm(url):
+    from bs4 import BeautifulSoup
+
+    try:
+        print()
+        print(timeStamp() + "* Checking HTML form code")
+        response, content = http_interface.request(url, method="GET")
+    except httplib2.ServerNotFoundError as e:
+        print (e.message)
+        sys.exit(1)
+
+    if url.lower().find("https:",0) != 0:
+        parsed_html = BeautifulSoup(content, "html.parser")
+        if len(parsed_html.body.find_all('input', attrs={'type':'password'})) > 0:
+            print(timeStamp() + "!!! Possible login form over HTTP connection")
 
 def main():
     if len(sys.argv) != 2:
@@ -147,30 +166,42 @@ def main():
         sys.exit(1)
     url = sys.argv[1]
     validateURL(url)
+
+    protocol = url.split('://')[0]
     domain = getDomain(url)
+    domain_only = protocol + "://" + domain + "/"
+    # Hello
     intro(url, domain)
+    # Check for 301 and 302 (not 303)
     checkHost(url)
+    # Perform WHOIS
     performWhoIs(getIPs(domain)[2][0])
-    print()
+    # Header checks (yay!)
     checkHeaders(url)
+
+    # File checks
+    # TODO What if user sets URL to http://donkey.dick/some-shit/ ?
+    # Need http://domain/ extraction
     print()
     print(timeStamp() + "* Checking paths")
-    checkLocation(url, "/robots.txt")
-    checkLocation(url, "/crossdomain.xml")
-    checkLocation(url, "/sitemap.xml")
-    checkLocation(url, "/admin/")
-    checkLocation(url, "/backup/")
-    checkLocation(url, "/upload/")
-    checkLocation(url, "/download/")
-    checkLocation(url, "/wp-admin/")
-    checkLocation(url, "/stats/")
-    checkLocation(url, "/awstats/")
-    checkLocation(url, "/phpbb3/")
-    checkLocation(url, "/forum/")
-    checkLocation(url, "/blog/")
-    print()
+    checkLocation(domain_only, "/robots.txt")
+    checkLocation(domain_only, "/crossdomain.xml")
+    checkLocation(domain_only, "/sitemap.xml")
+    checkLocation(domain_only, "/admin/")
+    checkLocation(domain_only, "/backup/")
+    checkLocation(domain_only, "/upload/")
+    checkLocation(domain_only, "/download/")
+    checkLocation(domain_only, "/wp-admin/")
+    checkLocation(domain_only, "/stats/")
+    checkLocation(domain_only, "/awstats/")
+    checkLocation(domain_only, "/phpbb3/")
+    checkLocation(domain_only, "/forum/")
+    checkLocation(domain_only, "/blog/")
+
+    # Proper Noddy(tm) XSS
     checkQuickXSS(url)
-    print()
+    # Checks for stuff like pasword input on HTTP page
+    checkForm(url)
 
 if __name__ == "__main__":
     main()
