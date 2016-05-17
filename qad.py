@@ -36,7 +36,7 @@ def checkLocation(url, path):
         if response.status == 200:
             print(timeStamp() + "!!! " + path + " found - " + urlCheck)
     except httplib2.ServerNotFoundError as e:
-        print (e.message) 
+        print(e.message) 
 
 def checkCookies(url):
     r = requests.get(url)
@@ -100,12 +100,17 @@ def checkQuickXSS(url):
 
     try:
         print(timeStamp() + "* Checking / for XSS (URL only)")
-        response, content = http_interface.request(url_xss, method="GET")
+        try:
+            response, content = http_interface.request(url_xss, method="GET")
+        except httplib2.HttpLib2Error as e:
+            print(timeStamp() + "[ERROR] " + str(e))
+            print(timeStamp() + "[ERROR] QAD will try and deal with this at some point..")
+            sys.exit(1)
 
         if b"<>qadqad" in content:
             print(timeStamp() + "!!! Reflected XSS potential at " + url_xss)
     except httplib2.ServerNotFoundError as e:
-        print (e.message)
+        print(e.message)
 
 def getDomain(url):
     domain = "{0.netloc}".format(urlsplit(url))
