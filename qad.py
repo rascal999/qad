@@ -25,9 +25,10 @@ def checkHost(url):
         if response.status == 301 or response.status == 302:
             print(timeStamp() + "* Redirected to " + response['location'] + " ... Exiting")
             sys.exit(1)
-
     except httplib2.ServerNotFoundError as e:
         print (e.message)
+
+    http_interface.follow_redirects = True
 
 def checkLocation(url, path):
     urlCheck = url + path
@@ -158,7 +159,7 @@ def checkForm(url):
     if url.lower().find("https:",0) != 0:
         parsed_html = BeautifulSoup(content, "html.parser")
         if len(parsed_html.body.find_all('input', attrs={'type':'password'})) > 0:
-            print(timeStamp() + "!!! Possible login form over HTTP connection")
+            print(timeStamp() + "!!! Possible login/registration form over HTTP connection at " + response['content-location'])
 
 def main():
     if len(sys.argv) != 2:
