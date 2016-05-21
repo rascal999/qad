@@ -22,7 +22,7 @@ setup(
     # Versions should comply with PEP440.  For a discussion on single-sourcing
     # the version across setup.py and the project code, see
     # https://packaging.python.org/en/latest/single_source_version.html
-    version='0.1.0',
+    version='0.1.1',
 
     description='Quick and dirty web app scanner',
     long_description=long_description,
@@ -48,7 +48,6 @@ setup(
         # Indicate who your project is intended for
         'Intended Audience :: Developers',
         'Intended Audience :: Information Technology',
-        'Intended Audience :: System/Administrators',
         'Topic :: Security',
 
         # Pick your license as you wish (should match "license" above)
@@ -80,7 +79,11 @@ setup(
     # your project is installed. For an analysis of "install_requires" vs pip's
     # requirements files see:
     # https://packaging.python.org/en/latest/requirements.html
-    install_requires=['peppercorn'],
+    install_requires=[
+        'httplib2','validators',
+        'beautifulsoup4','IPWhois',
+        'requests',
+    ],
 
     # List additional groups of dependencies here (e.g. development
     # dependencies). You can install these using the following syntax,
