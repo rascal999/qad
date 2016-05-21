@@ -1,17 +1,20 @@
 #!/usr/bin/env python
 
+import re
 import requests
 import validators
 import sys
 import httplib2
 import datetime
 import socket
-from urllib.parse import urlsplit
+from urllib.parse import urlsplit, urljoin
 from ipwhois import IPWhois
 from pprint import pprint
+from bs4 import BeautifulSoup, SoupStrainer
 
 http_interface = httplib2.Http()
 http_interface.follow_redirects = False
+links = []
 
 def timeStamp():
     now = datetime.datetime.now()
@@ -30,6 +33,23 @@ def checkHost(url):
 
     http_interface.follow_redirects = True
 
+def addLink(url):
+    if url not in links:
+        links.append(url)
+
+def checkLinks(url):
+    try:
+        status, response = http_interface.request(url)
+
+        for link in BeautifulSoup(response, "html.parser", parse_only=SoupStrainer("a")):
+            if link.has_attr('href'):
+                addLink(urljoin(url,link['href']))
+        for link in BeautifulSoup(response, "html.parser", parse_only=SoupStrainer("script")):
+            if link.has_attr('src'):
+                addLink(urljoin(url,link['src']))
+    except:
+        return
+
 def checkLocation(url, path):
     urlCheck = url + path
     try:
@@ -37,6 +57,9 @@ def checkLocation(url, path):
 
         if response.status == 200:
             print(timeStamp() + "!!! " + path + " found - " + urlCheck)
+            # Checks for stuff like pasword input on HTTP page
+            checkForm(url + path)
+            checkLinks(url + path)
     except httplib2.ServerNotFoundError as e:
         print(e.message) 
 
@@ -149,8 +172,6 @@ def checkForm(url):
     from bs4 import BeautifulSoup
 
     try:
-        print()
-        print(timeStamp() + "* Checking HTML form code")
         response, content = http_interface.request(url, method="GET")
     except httplib2.ServerNotFoundError as e:
         print (e.message)
@@ -158,8 +179,18 @@ def checkForm(url):
 
     if url.lower().find("https:",0) != 0:
         parsed_html = BeautifulSoup(content, "html.parser")
-        if len(parsed_html.body.find_all('input', attrs={'type':'password'})) > 0:
-            print(timeStamp() + "!!! Possible login/registration form over HTTP connection at " + response['content-location'])
+        try:
+            if len(parsed_html.body.find_all('input', attrs={'type':'password'})) > 0:
+                print(timeStamp() + "!!! Possible login/registration form over HTTP connection at " + response['content-location'])
+        except:
+            return
+
+def checkJS():
+    print()
+    print(timeStamp() + "* JavaScript URLs found")
+    for link in links:
+        if re.search(".js$",link):
+            print(timeStamp() + "- " + link)
 
 def main():
     if len(sys.argv) != 2:
@@ -193,24 +224,28 @@ def main():
     checkLocation(domain_only, "/upload/")
     checkLocation(domain_only, "/download/")
     checkLocation(domain_only, "/wp-admin/")
-    checkLocation(domain_only, "/stats/")
+    #checkLocation(domain_only, "/stats/")
     checkLocation(domain_only, "/awstats/")
     checkLocation(domain_only, "/phpbb3/")
     checkLocation(domain_only, "/forum/")
+    checkLocation(domain_only, "/login/")
     checkLocation(domain_only, "/blog/")
 
-    # Proper Noddy(tm) XSS
+    # Proper Noddy(tm) XSS checks
     checkQuickXSS(url)
-    # Checks for stuff like pasword input on HTTP page
-    checkForm(url)
+
+    # List JS files
+    checkJS()
+
+    # Crawler (not threaded, could get caught in infinite loop)
+    #for link in links:
+    #    checkLinks(link)
 
 if __name__ == "__main__":
     main()
 
 # Header presence checked, what about header values?
-#checkRobots
 #checkHeaders
 # Missing headers
 # Header versions
 #checkMethods
-#checkThirdParty?
